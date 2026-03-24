@@ -5,10 +5,13 @@
 SERVICE=${1:?Usage: $0 <service> <profile>}
 PROFILE=${2:?Usage: $0 <service> <profile>}
 
-# The cloudwatch filter pattern to exclude health checks and finished calls, which are noisy and not useful for debugging
-FILTER=$'{$.[\'grpc.method\'] != "Check" && $.msg != "finished call"}'
+FILTER='.msg != "finished call" and .["grpc.method"] != "Check"'
 
-# The jq filter to strip out uninteresting fields from the log messages
+# If the --debug flag is not passed, filter out debug logs
+[[ "$*" == *"--debug"* ]] || FILTER="$FILTER and .level != \"DEBUG\""
+
+FILTER="select($FILTER)"
+
 STRIP='del(
   .protocol,
   .["grpc.method_type"],
@@ -20,6 +23,8 @@ STRIP='del(
   .["grpc.service"]
 )'
 
+# If the --raw flag is passed, don't strip any fields
+[[ "$*" == *"--raw"* ]] && STRIP='.'
+
 unbuffer aws logs tail /ecs/$SERVICE --follow --profile $PROFILE \
-  --filter-pattern "$FILTER" \
-  | jq -Rc 'split(" ")[2:] | join(" ") | fromjson | '"$STRIP"
+  | jq -Rc 'split(" ")[2:] | join(" ") | fromjson? | '"$FILTER"' | '"$STRIP"
