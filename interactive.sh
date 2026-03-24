@@ -1,8 +1,8 @@
 #!/bin/bash
 
-profile="mm-prod"
-cluster_name="marketmate-prod"
-service_name="service-mda-external-delayed"
+profile="mm-stage"
+cluster_name="marketmate-stage"
+service_name="web-portfolio-pages"
 
 # Get the task ID of the first running task for the specified service
 task_arn=$(aws ecs list-tasks --cluster $cluster_name --service-name $service_name --profile $profile --query "taskArns[0]" --output text)
